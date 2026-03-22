@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+pydantic
+python-dotenv
+python-multipart
+google-generativeai
+sqlalchemy
+passlib[argon2]
+python-jose[cryptography]
+httpx
+argon2-cffi
