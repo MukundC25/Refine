@@ -5,6 +5,7 @@ python-dotenv
 python-multipart
 google-generativeai
 sqlalchemy
+psycopg2-binary
 passlib[argon2]
 python-jose[cryptography]
 httpx
