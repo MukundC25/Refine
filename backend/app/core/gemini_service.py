@@ -8,14 +8,21 @@ load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 # Check if API key is set
-if not GEMINI_API_KEY:
-    print("ERROR: GEMINI_API_KEY environment variable is not set!")
-    print("Available env vars:", [k for k in os.environ.keys() if 'GEMINI' in k.upper()])
+if not GEMINI_API_KEY or GEMINI_API_KEY == "your_new_gemini_api_key_here":
+    print("WARNING: GEMINI_API_KEY environment variable is not set or is using placeholder!")
+    print("Please set a valid Gemini API key in your environment variables.")
+    GEMINI_API_KEY = None
 else:
     print(f"Gemini API Key loaded: {GEMINI_API_KEY[:10]}...")
     genai.configure(api_key=GEMINI_API_KEY)
 
+def check_api_key():
+    """Check if API key is configured, raise exception if not"""
+    if not GEMINI_API_KEY:
+        raise Exception("GEMINI_API_KEY is not configured. Please set a valid API key in your environment variables.")
+
 def generate_expert_prompt(job_description: str) -> str:
+    check_api_key()  # Ensure API key is set
     prompt = f"""
     Analyze the following job description and create a detailed **Evaluation Rubric** for assessing resume alignment.
 
@@ -46,8 +53,10 @@ def generate_expert_prompt(job_description: str) -> str:
 import re
 
 def evaluate_resume_text(jd_text: str, resume_latex_code: str) -> str:
-    expert_prompt = generate_expert_prompt(jd_text)
-    score_guidelines = """
+    try:
+        check_api_key()  # Ensure API key is set
+        expert_prompt = generate_expert_prompt(jd_text)
+        score_guidelines = """
     **OBJECTIVE EVALUATION RUBRIC.** Evaluate the resume against the Job Description using the rubric above.
 
     **Instructions:**
@@ -74,9 +83,8 @@ def evaluate_resume_text(jd_text: str, resume_latex_code: str) -> str:
         }
     }
     """
-    prompt_content = f"{expert_prompt}\n\nEvaluate this resume LaTeX code:\n{resume_latex_code}\n\n{score_guidelines}"
-    model = genai.GenerativeModel('gemini-2.5-flash')
-    try:
+        prompt_content = f"{expert_prompt}\n\nEvaluate this resume LaTeX code:\n{resume_latex_code}\n\n{score_guidelines}"
+        model = genai.GenerativeModel('gemini-2.5-flash')
         response = model.generate_content(
             contents=[{"role": "user", "parts": [prompt_content]}],
             generation_config=genai.types.GenerationConfig(
