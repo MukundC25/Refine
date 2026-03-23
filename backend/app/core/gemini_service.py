@@ -139,7 +139,7 @@ Please return the output in the following strict format (do NOT use JSON):
 ---SUMMARY_END---
 """
     try:
-        model = genai.GenerativeModel('gemini-2.5-pro')
+        model = genai.GenerativeModel('gemini-2.5-flash')  # Use flash model for free tier
         # Prepend system instruction to prompt since some models/versions don't support 'system' role
         full_prompt = "You are a perfectionist resume writer with an eye for detail and a deep understanding of how to align resumes precisely with job descriptions.\n\n" + prompt
         
