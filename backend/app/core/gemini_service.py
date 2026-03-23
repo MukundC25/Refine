@@ -2,10 +2,18 @@ import os
 import google.generativeai as genai
 from dotenv import load_dotenv
 
+# Load environment variables from .env file if it exists
 load_dotenv()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-genai.configure(api_key=GEMINI_API_KEY)
+
+# Check if API key is set
+if not GEMINI_API_KEY:
+    print("ERROR: GEMINI_API_KEY environment variable is not set!")
+    print("Available env vars:", [k for k in os.environ.keys() if 'GEMINI' in k.upper()])
+else:
+    print(f"Gemini API Key loaded: {GEMINI_API_KEY[:10]}...")
+    genai.configure(api_key=GEMINI_API_KEY)
 
 def generate_expert_prompt(job_description: str) -> str:
     prompt = f"""
