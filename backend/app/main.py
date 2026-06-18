@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+from app.routers import ranking
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -34,6 +35,8 @@ from app.routers import resume_processing, auth
 
 app.include_router(resume_processing.router)
 app.include_router(auth.router, tags=["auth"])
+app.include_router(ranking.router)
+
 
 @app.get("/")
 def read_root():
