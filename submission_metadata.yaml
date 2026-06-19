@@ -1,0 +1,25 @@
+challenge: India Runs Data & AI Challenge — Candidate Ranking Track
+version: "1.0.0"
+team: Refine
+submission_file: submission.csv
+
+scoring:
+  primary_metric: ndcg_at_100
+  secondary_metric: precision_at_10
+
+pipeline:
+  jd_parser: backend.app.core.jd_parser.JDParser
+  skill_matcher: backend.app.core.skill_matcher.SkillMatcher
+  embedding_service: backend.app.core.embedding_service.EmbeddingService
+  career_analyzer: backend.app.core.career_analyzer.CareerAnalyzer
+  signal_scorer: backend.app.core.signal_scorer.SignalScorer
+  honeypot_detector: backend.app.core.honeypot_detector.HoneypotDetector
+  ranking_engine: backend.app.core.ranking_engine.RankingEngine
+
+model_artifacts:
+  embedding_model: all-MiniLM-L6-v2   # cached offline in .cache/
+  precomputed_dir: precomputed/        # gitignored
+
+notes: |
+  submission.csv is gitignored; generate it by running:
+      python rank.py --jd <jd.txt> --candidates candidates.jsonl

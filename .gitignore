@@ -1,17 +1,37 @@
-# Ignore Node.js dependencies
+# ── Node.js ───────────────────────────────────────────────────────────────── #
 node_modules/
 dist/
 build/
 
-# Ignore Python virtual environments
+# ── Python ────────────────────────────────────────────────────────────────── #
 venv/
+.venv/
 __pycache__/
+*.py[cod]
+*.pyo
 
-# Ignore environment variables file
+# ── Environment & secrets ─────────────────────────────────────────────────── #
 .env
+.env.*
+!.env.production       # keep committed (no secrets, only public URLs)
 
-# Ignore macOS specific files
+# ── OS artefacts ──────────────────────────────────────────────────────────── #
 .DS_Store
+Thumbs.db
 
-# Ignore SQLite database
+# ── Database ──────────────────────────────────────────────────────────────── #
 *.db
+
+# ── Ranking system — large data files (Issue 001) ─────────────────────────── #
+submission.csv
+candidates.jsonl
+candidates.jsonl.gz
+*.embeddings.npy
+precomputed/
+
+# ── Jupyter ───────────────────────────────────────────────────────────────── #
+notebooks/.ipynb_checkpoints/
+.ipynb_checkpoints/
+
+# ── Docs (generated / challenge-internal) ─────────────────────────────────── #
+docs/

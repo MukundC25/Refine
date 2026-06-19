@@ -1,3 +1,4 @@
+# ── Existing dependencies (resume optimisation) ───────────────────────────── #
 fastapi
 uvicorn[standard]
 pydantic
@@ -10,3 +11,14 @@ passlib[argon2]
 python-jose[cryptography]
 httpx
 argon2-cffi
+
+# ── Ranking system dependencies (Issue 001) ───────────────────────────────── #
+sentence-transformers==3.0.1
+torch==2.3.1               # CPU-only build; install GPU build separately if needed
+ijson==3.3.0               # streaming JSONL parser — avoids loading full dataset in RAM
+python-docx==1.1.2         # .docx resume parsing
+pypdf==4.3.1               # .pdf resume parsing
+slowapi==0.1.9             # rate limiting for FastAPI
+structlog==24.1.0          # structured / audit logging
+numpy==1.26.4
+scikit-learn==1.5.0
