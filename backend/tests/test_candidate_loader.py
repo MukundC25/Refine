@@ -33,10 +33,9 @@ from backend.app.core.candidate_loader import (
 # Path to the sample file provided with the challenge dataset
 # ---------------------------------------------------------------------------
 
-_REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]  # d:\Refine
+_REPO_ROOT = pathlib.Path(__file__).resolve().parents[3]  # .../Downloads
 _SAMPLE_JSON = (
     _REPO_ROOT
-    / "[PUB] India_runs_data_and_ai_challenge"
     / "[PUB] India_runs_data_and_ai_challenge"
     / "India_runs_data_and_ai_challenge"
     / "sample_candidates.json"
