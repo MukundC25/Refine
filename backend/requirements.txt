@@ -22,3 +22,4 @@ slowapi==0.1.9             # rate limiting for FastAPI
 structlog==24.1.0          # structured / audit logging
 numpy==1.26.4
 scikit-learn==1.5.0
+tqdm>=4.66
