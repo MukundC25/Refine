@@ -65,31 +65,30 @@ class GoogleLogin(BaseModel):
     token: str
 
 
-# ── Ranking system schemas (Issue 001) ───────────────────────────────────── #
-
 class CandidateRankSchema(BaseModel):
-    """Ranked candidate entry returned by the /rank endpoint."""
-
-    candidate_id: str = Field(..., description="Unique identifier for the candidate.")
-    rank: int = Field(..., ge=1, description="Final rank position (1 = best).")
-    score: float = Field(..., ge=0.0, le=1.0, description="Normalised composite score [0, 1].")
-    shortlisted: bool = Field(..., description="Whether the candidate is in the top-K shortlist.")
-    score_breakdown: Optional[Dict[str, Any]] = Field(
-        default=None,
-        description="Per-signal score breakdown (skill, embedding, career, signal).",
-    )
+    candidate_id: str
+    rank: int = Field(..., ge=1)
+    score: float = Field(..., ge=0.0, le=1.0)
+    shortlisted: bool
+    score_breakdown: Optional[Dict[str, Any]] = None
 
 
 class RankingRequest(BaseModel):
-    """Request body for POST /rank."""
-
-    job_description: str = Field(..., description="Raw job description text.")
-    top_k: int = Field(default=100, ge=1, le=10_000, description="Number of candidates to shortlist.")
+    job_description: str
+    top_k: int = Field(default=100, ge=1, le=10_000)
 
 
 class RankingResponse(BaseModel):
-    """Response body for POST /rank."""
-
-    total_candidates: int = Field(..., description="Total number of candidates evaluated.")
-    shortlisted: int = Field(..., description="Number of candidates in the shortlist.")
+    total_candidates: int
+    shortlisted: int
     results: list[CandidateRankSchema]
+
+
+class RuleScoreSchema(BaseModel):
+    candidate_id: str
+    experience_score: float = Field(..., ge=0.0, le=30.0)
+    title_score: float = Field(..., ge=0.0, le=20.0)
+    skills_score: float = Field(..., ge=0.0, le=25.0)
+    industry_score: float = Field(..., ge=0.0, le=15.0)
+    disqualifier_penalty: float
+    total: float = Field(..., ge=0.0)
