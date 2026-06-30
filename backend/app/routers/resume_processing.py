@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Form, HTTPException
+from fastapi import APIRouter, Form, HTTPException, Request
+from app.limiter import limiter
 from app.models.schemas import ResumeInput, RefinementInput, EvaluationOutput, RefinedResumeOutput
 from app.core.gemini_service import evaluate_resume_text, refine_resume
 from typing import Dict, Any
@@ -40,7 +41,9 @@ def calculate_overall_score(eval_json: Dict[str, Any]) -> int:
         return 0
 
 @router.post("/evaluate", response_model=EvaluationOutput)
+@limiter.limit("10/minute")
 async def evaluate_resume(
+    request: Request,
     job_description: str = Form(...),
     resume_latex_code: str = Form(...)
 ):
@@ -77,7 +80,8 @@ async def evaluate_resume(
     return eval_json
 
 @router.post("/refine", response_model=RefinedResumeOutput)
-async def refine_resume_endpoint(input: RefinementInput):
+@limiter.limit("5/minute")
+async def refine_resume_endpoint(request: Request, input: RefinementInput):
     """
     Refine a LaTeX resume based on job description and evaluation.
     """

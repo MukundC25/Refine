@@ -23,7 +23,7 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from fastapi import (
     APIRouter,
@@ -31,12 +31,14 @@ from fastapi import (
     File,
     Form,
     HTTPException,
+    Request,
     UploadFile,
     status,
 )
 from pydantic import BaseModel, Field
 
 from app import config
+from app.limiter import limiter
 from app.models.schemas import (
     ProfileSnapshot,
     RankedCandidateResponse,
@@ -76,7 +78,9 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/ranking", tags=["ranking"])
 
-ALLOWED_JD_SUFFIXES = {".docx", ".pdf", ".txt"}
+ALLOWED_JD_SUFFIXES = {".docx", ".pdf"}  # .txt excluded per Issue 016 spec
+MAX_JD_LENGTH = 50_000          # ~10 K words — well above any real JD
+MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
 
 
 @dataclass
@@ -142,7 +146,7 @@ def _reset_engine_for_tests() -> None:
     _runs.clear()
 
 
-def _parse_jd_from_upload(file: UploadFile) -> ParsedJD:
+async def _parse_jd_from_upload(file: UploadFile) -> ParsedJD:
     """Persist the upload to a temp file and run get_or_parse_jd (cached).
 
     get_or_parse_jd writes results to PARSED_JD_CACHE_PATH and skips Gemini
@@ -152,11 +156,18 @@ def _parse_jd_from_upload(file: UploadFile) -> ParsedJD:
     if suffix not in ALLOWED_JD_SUFFIXES:
         raise HTTPException(
             status_code=422,
-            detail=f"Unsupported JD file type {suffix!r}. Use .docx, .pdf, or .txt.",
+            detail=f"Unsupported JD file type: {suffix}. Use .docx or .pdf.",
+        )
+
+    content = await file.read()
+    if len(content) > MAX_UPLOAD_SIZE_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File too large (max {MAX_UPLOAD_SIZE_BYTES // (1024 * 1024)}MB).",
         )
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-        shutil.copyfileobj(file.file, tmp)
+        tmp.write(content)
         tmp_path = tmp.name
 
     try:
@@ -165,16 +176,20 @@ def _parse_jd_from_upload(file: UploadFile) -> ParsedJD:
         Path(tmp_path).unlink(missing_ok=True)
 
 
-def _load_jd(
+async def _load_jd(
     job_description_text: str | None,
     job_description_file: UploadFile | None,
 ) -> ParsedJD:
     if job_description_file is not None and job_description_file.filename:
-        return _parse_jd_from_upload(job_description_file)
+        return await _parse_jd_from_upload(job_description_file)
     if job_description_text and job_description_text.strip():
-        return get_or_parse_jd(
-            job_description_text, cache_path=config.PARSED_JD_CACHE_PATH,
-        )
+        text = job_description_text.strip()
+        if len(text) > MAX_JD_LENGTH:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Job description too long: {len(text)} chars (max {MAX_JD_LENGTH}).",
+            )
+        return get_or_parse_jd(text, cache_path=config.PARSED_JD_CACHE_PATH)
     raise HTTPException(
         status_code=422,
         detail="Either job_description_text or job_description_file is required.",
@@ -304,10 +319,12 @@ def _execute_pipeline(
 
 
 @router.post("/rank", response_model=RankingResponse)
+@limiter.limit("2/minute")
 async def rank_candidates(
-    job_description_text: str | None = Form(None),
-    job_description_file: UploadFile | None = File(None),
-    candidates_path: str = Form(None),
+    request: Request,
+    job_description_text: Optional[str] = Form(None),
+    job_description_file: Optional[UploadFile] = File(None),
+    candidates_path: Optional[str] = Form(None),
     top_n: int = Form(100),
     stage1_n: int = Form(5000),
     stage2_n: int = Form(200),
@@ -326,7 +343,7 @@ async def rank_candidates(
 
     try:
         try:
-            jd = _load_jd(job_description_text, job_description_file)
+            jd = await _load_jd(job_description_text, job_description_file)
         except HTTPException:
             raise
         except Exception as exc:
@@ -372,7 +389,9 @@ async def rank_candidates(
 
 
 @router.get("/status/{run_id}", response_model=RankingStatusResponse)
+@limiter.limit("60/minute")
 async def get_ranking_status(
+    request: Request,
     run_id: str,
     current_user=Depends(get_current_user),
 ) -> RankingStatusResponse:
@@ -390,7 +409,9 @@ async def get_ranking_status(
 
 
 @router.get("/candidate/{candidate_id}")
+@limiter.limit("60/minute")
 async def get_candidate_detail(
+    request: Request,
     candidate_id: str,
     current_user=Depends(get_current_user),
 ) -> dict[str, Any]:
@@ -429,8 +450,10 @@ async def get_candidate_detail(
 
 
 @router.post("/rerank", response_model=RankingResponse)
+@limiter.limit("10/minute")
 async def rerank_candidates(
-    request: ReRankRequest,
+    request: Request,
+    body: ReRankRequest,
     current_user=Depends(get_current_user),
 ) -> RankingResponse:
     """Re-run Stage 2 + Stage 3 using cached Stage 1 survivors from the last run.
@@ -440,7 +463,7 @@ async def rerank_candidates(
     """
     global _last_run_id
     # Validate weights FIRST so callers get a 422 even when no prior run exists.
-    weights = _validate_weights(request.weight_overrides)
+    weights = _validate_weights(body.weight_overrides)
 
     if _last_run_id is None:
         raise HTTPException(
@@ -454,10 +477,10 @@ async def rerank_candidates(
             detail="Prior run has no cached Stage 1 results (likely failed mid-run).",
         )
 
-    if request.job_description and request.job_description.strip():
+    if body.job_description and body.job_description.strip():
         try:
             jd = get_or_parse_jd(
-                request.job_description, cache_path=config.PARSED_JD_CACHE_PATH,
+                body.job_description, cache_path=config.PARSED_JD_CACHE_PATH,
             )
         except Exception as exc:
             # Real Gemini failures (rate limit, network, bad key) surface as a
