@@ -205,7 +205,10 @@ def _extract_with_gemini(text: str) -> dict:
     """
     model = _get_gemini_model()
 
-    prompt = _EXTRACTION_PROMPT.format(jd_text=text)
+    # Use string replace rather than .format() because the prompt template
+    # contains literal `{` and `}` JSON braces in its schema example that
+    # would otherwise be interpreted as format fields.
+    prompt = _EXTRACTION_PROMPT.replace("{jd_text}", text)
     logger.info("Calling Gemini for JD extraction (text length=%d chars)", len(text))
 
     response = model.generate_content(
