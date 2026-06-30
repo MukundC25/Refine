@@ -28,6 +28,10 @@ from backend.app.core.career_analyzer import CareerTrajectoryScore, analyze_care
 from backend.app.core.embedding_service import EmbeddingService, load_embeddings
 from backend.app.core.honeypot_detector import HoneypotResult, detect_honeypot
 from backend.app.core.rule_scorer import RuleScore, score_candidate
+from backend.app.core.reasoning_generator import (
+    generate_reasoning,
+    load_cached_rich_reasoning,
+)
 from backend.app.core.signal_scorer import BehavioralScore, compute_behavioral_score
 from backend.app.core.skill_matcher import SkillsMatchScore, combined_skills_score
 
@@ -57,6 +61,7 @@ class RankedCandidate:
     honeypot_result: HoneypotResult
     final_score: float
     rank: int = 0
+    reasoning: str = ""
 
 
 def compute_final_score(
@@ -176,12 +181,21 @@ def stage3_behavioral_boost(
     jd: ParsedJD,
     top_n: int = 100,
     weights: dict[str, float] | None = None,
+    rich_reasoning_cache: dict[str, str] | None = None,
 ) -> list[RankedCandidate]:
-    """Compute behavioral scores, final composite, sort, assign ranks 1..N."""
+    """Compute behavioral scores, final composite, sort, assign ranks 1..N.
+
+    Populates each RankedCandidate.reasoning from rich_reasoning_cache when the
+    candidate is present, otherwise falls back to the template generator.
+    """
+    cache = rich_reasoning_cache or {}
     ranked: list[RankedCandidate] = []
     for candidate, rule, honeypot, emb_sim, skills, career in stage2_results:
         behavioral = compute_behavioral_score(candidate)
         final = compute_final_score(rule, emb_sim, skills, career, behavioral, honeypot, weights)
+        reasoning = cache.get(candidate.candidate_id) or generate_reasoning(
+            candidate, rule, emb_sim, skills, career, behavioral, honeypot, final, jd=jd,
+        )
         ranked.append(RankedCandidate(
             candidate=candidate,
             rule_score=rule,
@@ -191,6 +205,7 @@ def stage3_behavioral_boost(
             behavioral_score=behavioral,
             honeypot_result=honeypot,
             final_score=final,
+            reasoning=reasoning,
         ))
     ranked.sort(key=lambda x: (-x.final_score, x.candidate.candidate_id))
     ranked = ranked[:top_n]
@@ -213,12 +228,16 @@ class RankingEngine:
         model_name: str = "all-MiniLM-L6-v2",
         embedding_service: EmbeddingService | None = None,
         weights: dict[str, float] | None = None,
+        rich_reasoning_path: str | None = None,
     ) -> None:
         self.model_name = model_name
         self.weights = weights or STAGE_WEIGHTS
         self.embedding_service = embedding_service or EmbeddingService(model_name=model_name)
         self.embeddings_matrix: np.ndarray | None = None
         self.candidate_id_index: dict[str, int] | None = None
+        self.rich_reasoning_cache: dict[str, str] = (
+            load_cached_rich_reasoning(rich_reasoning_path) if rich_reasoning_path else {}
+        )
 
         if embeddings_path is not None:
             self._load_precomputed(embeddings_path, ids_path)
@@ -273,7 +292,10 @@ class RankingEngine:
         logger.info("Stage 2 survivors: %d", len(stage2))
 
         logger.info("Stage 3: behavioral boost → top %d", top_n_final)
-        return stage3_behavioral_boost(stage2, jd, top_n=top_n_final, weights=self.weights)
+        return stage3_behavioral_boost(
+            stage2, jd, top_n=top_n_final, weights=self.weights,
+            rich_reasoning_cache=self.rich_reasoning_cache,
+        )
 
     def rank_records(
         self,
@@ -293,4 +315,7 @@ class RankingEngine:
             top_n=top_n_stage2,
             weights=self.weights,
         )
-        return stage3_behavioral_boost(stage2, jd, top_n=top_n_final, weights=self.weights)
+        return stage3_behavioral_boost(
+            stage2, jd, top_n=top_n_final, weights=self.weights,
+            rich_reasoning_cache=self.rich_reasoning_cache,
+        )
