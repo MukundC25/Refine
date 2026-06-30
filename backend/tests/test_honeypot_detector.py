@@ -37,13 +37,7 @@ from backend.app.core.honeypot_detector import (
 # Helpers / fixtures
 # ---------------------------------------------------------------------------
 
-_REPO_ROOT = pathlib.Path(__file__).resolve().parents[3]  # .../Downloads
-_SAMPLE_JSON = (
-    _REPO_ROOT
-    / "[PUB] India_runs_data_and_ai_challenge"
-    / "India_runs_data_and_ai_challenge"
-    / "sample_candidates.json"
-)
+from backend.tests.test_schemas import _SAMPLE_JSON
 
 
 @pytest.fixture(scope="module")

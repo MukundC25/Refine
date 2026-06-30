@@ -20,12 +20,7 @@ from backend.app.core.skill_matcher import (
     skill_trust_score,
 )
 
-_SAMPLE_JSON = (
-    pathlib.Path(__file__).resolve().parents[3]
-    / "[PUB] India_runs_data_and_ai_challenge"
-    / "India_runs_data_and_ai_challenge"
-    / "sample_candidates.json"
-)
+from backend.tests.test_schemas import _SAMPLE_JSON
 
 
 @pytest.fixture(scope="module")
