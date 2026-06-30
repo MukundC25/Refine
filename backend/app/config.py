@@ -1,3 +1,4 @@
+import json
 import os
 from dotenv import load_dotenv
 
@@ -12,3 +13,12 @@ CANDIDATES_JSONL_PATH = os.getenv("CANDIDATES_JSONL_PATH", "./candidates.jsonl")
 PARSED_JD_CACHE_PATH = os.getenv("PARSED_JD_CACHE_PATH", "./precomputed/parsed_jd.json")
 RICH_REASONING_PATH = os.getenv("RICH_REASONING_PATH", "./precomputed/rich_reasoning.json")
 EMBEDDING_MODEL_NAME = os.getenv("EMBEDDING_MODEL_NAME", "all-MiniLM-L6-v2")
+
+# Security (Issue 016).
+# In production set ALLOWED_ORIGINS to a JSON array, e.g.:
+#   ALLOWED_ORIGINS='["https://refine.onrender.com"]'
+_origins_env = os.getenv("ALLOWED_ORIGINS", '["*"]')
+try:
+    ALLOWED_ORIGINS: list[str] = json.loads(_origins_env)
+except (json.JSONDecodeError, TypeError):
+    ALLOWED_ORIGINS = [_origins_env]  # treat raw string as a single origin
