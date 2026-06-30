@@ -65,25 +65,6 @@ class GoogleLogin(BaseModel):
     token: str
 
 
-class CandidateRankSchema(BaseModel):
-    candidate_id: str
-    rank: int = Field(..., ge=1)
-    score: float = Field(..., ge=0.0, le=1.0)
-    shortlisted: bool
-    score_breakdown: Optional[Dict[str, Any]] = None
-
-
-class RankingRequest(BaseModel):
-    job_description: str
-    top_k: int = Field(default=100, ge=1, le=10_000)
-
-
-class RankingResponse(BaseModel):
-    total_candidates: int
-    shortlisted: int
-    results: list[CandidateRankSchema]
-
-
 class RuleScoreSchema(BaseModel):
     candidate_id: str
     experience_score: float = Field(..., ge=0.0, le=30.0)
@@ -92,3 +73,51 @@ class RuleScoreSchema(BaseModel):
     industry_score: float = Field(..., ge=0.0, le=15.0)
     disqualifier_penalty: float
     total: float = Field(..., ge=0.0)
+
+
+class ScoreBreakdown(BaseModel):
+    rule_score: float
+    embedding_similarity: float
+    skills_score: float
+    career_score: float
+    behavioral_score: float
+
+
+class ProfileSnapshot(BaseModel):
+    headline: str
+    current_title: str
+    current_company: str
+    years_of_experience: float
+    top_skills: list[str]
+
+
+class RankedCandidateResponse(BaseModel):
+    rank: int
+    candidate_id: str
+    final_score: float
+    reasoning: str
+    score_breakdown: ScoreBreakdown
+    profile_snapshot: ProfileSnapshot
+
+
+class RankingResponse(BaseModel):
+    run_id: str
+    status: str
+    elapsed_seconds: float
+    total_candidates_processed: int
+    honeypots_excluded: int
+    ranked_candidates: list[RankedCandidateResponse]
+
+
+class RankingStatusResponse(BaseModel):
+    run_id: str
+    status: str
+    stage: str
+    progress_pct: float
+    elapsed_seconds: float
+    message: str
+
+
+class ReRankRequest(BaseModel):
+    job_description: Optional[str] = None
+    weight_overrides: Optional[Dict[str, float]] = None
