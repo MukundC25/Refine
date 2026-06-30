@@ -25,12 +25,7 @@ for p in (_BACKEND, _REPO_ROOT):
     if str(p) not in sys.path:
         sys.path.insert(0, str(p))
 
-_SAMPLE_JSON = (
-    pathlib.Path(__file__).resolve().parents[3]
-    / "[PUB] India_runs_data_and_ai_challenge"
-    / "India_runs_data_and_ai_challenge"
-    / "sample_candidates.json"
-)
+from backend.tests.test_schemas import _SAMPLE_JSON
 
 
 def _prebuild_jd_cache(cache_path: pathlib.Path, text: str) -> None:

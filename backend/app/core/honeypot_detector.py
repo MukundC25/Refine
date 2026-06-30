@@ -32,8 +32,7 @@ from datetime import date, datetime
 from typing import Optional
 
 from backend.app.core.candidate_loader import CandidateRecord
-
-logger = logging.getLogger(__name__)
+from backend.app.core.logging_config import log
 
 # ---------------------------------------------------------------------------
 # Reference date — treat "today" as the dataset cutoff
@@ -462,7 +461,7 @@ def check_signal_sanity(candidate: CandidateRecord) -> list[str]:
 # Main entry point
 # ---------------------------------------------------------------------------
 
-def detect_honeypot(candidate: CandidateRecord) -> HoneypotResult:
+def detect_honeypot(candidate: CandidateRecord, run_id: str | None = None) -> HoneypotResult:
     """Run all honeypot checks on a candidate and return a :class:`HoneypotResult`.
 
     Checks are independent; flags from all checkers are accumulated before the
@@ -500,13 +499,13 @@ def detect_honeypot(candidate: CandidateRecord) -> HoneypotResult:
     is_suspicious = n > 0
 
     if is_suspicious:
-        logger.warning(
-            "Honeypot suspect %s — multiplier=%.1f confidence=%.2f flags=%s",
-            candidate.candidate_id,
-            multiplier,
-            confidence,
-            all_flags,
-        )
+        # Avoid traditional logger; use structured logging for Issue 017
+        if run_id:
+            log.warning("honeypot_flagged",
+                        run_id=run_id,
+                        candidate_id=candidate.candidate_id,
+                        flags=all_flags,
+                        penalty=multiplier)
 
     return HoneypotResult(
         is_suspicious=is_suspicious,

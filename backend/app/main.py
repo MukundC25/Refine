@@ -1,3 +1,4 @@
+import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -8,6 +9,10 @@ from slowapi.errors import RateLimitExceeded
 from app import config
 from app.limiter import limiter
 from app.routers import ranking
+from app.core.logging_config import configure_logging, log
+
+# Initialize logging globally
+configure_logging(level=config.LOG_LEVEL)
 
 
 @asynccontextmanager
@@ -68,6 +73,20 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
+
+
+# ── Audit logging (Issue 017) ─────────────────────────────────────────────── #
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start = time.time()
+    response = await call_next(request)
+    # Exclude root/health checks from cluttering the audit log, if desired.
+    # The spec asks to "log every request with endpoint", so we log all.
+    log.info("api_request",
+             endpoint=f"{request.method} {request.url.path}",
+             status_code=response.status_code,
+             elapsed_ms=round((time.time() - start) * 1000, 1))
     return response
 
 

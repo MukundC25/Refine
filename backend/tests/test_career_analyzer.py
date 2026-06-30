@@ -53,12 +53,7 @@ from backend.app.core.career_analyzer import (
 # ---------------------------------------------------------------------------
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]  # .../Downloads
-_SAMPLE_JSON = (
-    _REPO_ROOT
-    / "[PUB] India_runs_data_and_ai_challenge"
-    / "India_runs_data_and_ai_challenge"
-    / "sample_candidates.json"
-)
+from backend.tests.test_schemas import _SAMPLE_JSON
 
 
 # ---------------------------------------------------------------------------
