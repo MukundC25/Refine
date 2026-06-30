@@ -54,3 +54,47 @@ export interface AppState {
   isLoading: boolean;
   error: string | null;
 }
+
+export interface ScoreBreakdown {
+  rule_score: number;
+  embedding_similarity: number;
+  skills_score: number;
+  career_score: number;
+  behavioral_score: number;
+}
+
+export interface ProfileSnapshot {
+  headline: string;
+  current_title: string;
+  current_company: string;
+  years_of_experience: number;
+  top_skills: string[];
+}
+
+export interface RankedCandidate {
+  rank: number;
+  candidate_id: string;
+  final_score: number;
+  reasoning: string;
+  score_breakdown: ScoreBreakdown;
+  profile_snapshot: ProfileSnapshot;
+}
+
+export interface RankingResult {
+  run_id: string;
+  status: string;
+  elapsed_seconds: number;
+  total_candidates_processed: number;
+  honeypots_excluded: number;
+  ranked_candidates: RankedCandidate[];
+}
+
+export interface CandidateFilters {
+  minYoe: number;
+  maxYoe: number;
+  minScore: number;
+  skills: string[];
+  workMode: string[];
+  maxNoticeDays: number;
+  searchQuery: string;
+}

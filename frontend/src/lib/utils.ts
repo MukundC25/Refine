@@ -153,3 +153,31 @@ export function createTextFileUrl(text: string): string {
   const blob = new Blob([text], { type: 'text/plain' });
   return URL.createObjectURL(blob);
 }
+
+// Real API call to backend for running the ranking pipeline
+export async function runRankingPipeline(jobDescriptionText: string, topN: number = 100): Promise<import("./types").RankingResult> {
+  const token = localStorage.getItem('refine_token');
+  if (!token) {
+    throw new Error("Authentication required to run ranking");
+  }
+
+  const formData = new FormData();
+  formData.append("job_description_text", jobDescriptionText);
+  formData.append("top_n", topN.toString());
+  // The backend also supports stage1_n and stage2_n, but we can rely on defaults.
+
+  const response = await fetch(`${API_BASE}/api/ranking/rank`, {
+    method: "POST",
+    headers: { 
+      Authorization: `Bearer ${token}` 
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || "Failed to run ranking pipeline");
+  }
+
+  return await response.json();
+}

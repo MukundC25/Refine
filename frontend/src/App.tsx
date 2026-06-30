@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { Routes, Route } from 'react-router-dom';
+import { RecruiterDashboardPage } from './components/recruiter';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import Stepper from './components/ui/Stepper';
@@ -16,7 +18,7 @@ import Button from './components/ui/Button';
 import { Lock, CreditCard } from 'lucide-react';
 import { jwtDecode } from 'jwt-decode';
 
-function App() {
+function HomeFlow() {
   const [view, setView] = useState<'landing' | 'app'>('landing');
   const [state, setState] = useState<AppState>({
     user: null,
@@ -392,6 +394,15 @@ function App() {
         )}
         
     </div>
+  );
+}
+
+function App() {
+  return (
+    <Routes>
+      <Route path="/*" element={<HomeFlow />} />
+      <Route path="/recruiter" element={<RecruiterDashboardPage />} />
+    </Routes>
   );
 }
 
