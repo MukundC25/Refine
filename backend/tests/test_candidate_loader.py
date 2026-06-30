@@ -33,13 +33,7 @@ from backend.app.core.candidate_loader import (
 # Path to the sample file provided with the challenge dataset
 # ---------------------------------------------------------------------------
 
-_REPO_ROOT = pathlib.Path(__file__).resolve().parents[3]  # .../Downloads
-_SAMPLE_JSON = (
-    _REPO_ROOT
-    / "[PUB] India_runs_data_and_ai_challenge"
-    / "India_runs_data_and_ai_challenge"
-    / "sample_candidates.json"
-)
+from backend.tests.test_schemas import _SAMPLE_JSON
 
 # ---------------------------------------------------------------------------
 # Fixtures — write sample data to a temp .jsonl and .jsonl.gz

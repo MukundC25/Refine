@@ -84,11 +84,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def configure_logging(level: str) -> None:
-    logging.basicConfig(
-        level=getattr(logging, level),
-        format="%(asctime)s  %(levelname)-7s  %(message)s",
-        datefmt="%H:%M:%S",
-    )
+    from backend.app.core.logging_config import configure_logging as setup_logging
+    setup_logging(level=level)
 
 
 def progress(msg: str) -> None:

@@ -19,12 +19,7 @@ from backend.tests.test_ranking_engine import FakeEmbeddingService
 
 
 _REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
-_SAMPLE_JSON = (
-    pathlib.Path(__file__).resolve().parents[3]
-    / "[PUB] India_runs_data_and_ai_challenge"
-    / "India_runs_data_and_ai_challenge"
-    / "sample_candidates.json"
-)
+from backend.tests.test_schemas import _SAMPLE_JSON
 
 
 @pytest.fixture(scope="module")

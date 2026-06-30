@@ -30,6 +30,9 @@ candidates.jsonl.gz
 *.embeddings.npy
 precomputed/
 
+# ── Logs (Issue 017) ──────────────────────────────────────────────────────── #
+logs/
+
 # ── Jupyter ───────────────────────────────────────────────────────────────── #
 notebooks/.ipynb_checkpoints/
 .ipynb_checkpoints/

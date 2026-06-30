@@ -22,3 +22,6 @@ try:
     ALLOWED_ORIGINS: list[str] = json.loads(_origins_env)
 except (json.JSONDecodeError, TypeError):
     ALLOWED_ORIGINS = [_origins_env]  # treat raw string as a single origin
+
+# Logging (Issue 017).
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")

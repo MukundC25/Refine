@@ -13,6 +13,9 @@ from __future__ import annotations
 
 import json
 import logging
+import time
+import hashlib
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -27,6 +30,7 @@ from backend.app.core.candidate_loader import (
 from backend.app.core.career_analyzer import CareerTrajectoryScore, analyze_career
 from backend.app.core.embedding_service import EmbeddingService, load_embeddings
 from backend.app.core.honeypot_detector import HoneypotResult, detect_honeypot
+from backend.app.core.logging_config import log
 from backend.app.core.rule_scorer import RuleScore, score_candidate
 from backend.app.core.reasoning_generator import (
     generate_reasoning,
@@ -37,8 +41,6 @@ from backend.app.core.skill_matcher import SkillsMatchScore, combined_skills_sco
 
 if TYPE_CHECKING:
     from backend.app.core.jd_parser import ParsedJD
-
-logger = logging.getLogger(__name__)
 
 
 STAGE_WEIGHTS: dict[str, float] = {
@@ -122,6 +124,7 @@ def stage1_prescreening(
     top_n: int = 5000,
 ) -> list[tuple[CandidateRecord, RuleScore, HoneypotResult]]:
     """Stream candidates, drop honeypot disqualifications, sort by rule.total."""
+    # (Note: honeypots_count is not captured here since this wrapper doesn't use it)
     return stage1_from_records(
         list(stream_candidates(candidates_path)), jd, top_n=top_n
     )
@@ -131,12 +134,17 @@ def stage1_from_records(
     candidates: list[CandidateRecord],
     jd: ParsedJD,
     top_n: int = 5000,
+    run_id: str | None = None,
+    honeypots_count: list[int] | None = None,
 ) -> list[tuple[CandidateRecord, RuleScore, HoneypotResult]]:
     """Same as stage1_prescreening but takes already-validated records."""
     results: list[tuple[CandidateRecord, RuleScore, HoneypotResult]] = []
+    if honeypots_count is None:
+        honeypots_count = [0]
     for candidate in candidates:
-        honeypot = detect_honeypot(candidate)
+        honeypot = detect_honeypot(candidate, run_id=run_id)
         if honeypot.penalty_multiplier == 0.0:
+            honeypots_count[0] += 1
             continue
         rule = score_candidate(candidate, jd)
         results.append((candidate, rule, honeypot))
@@ -276,12 +284,35 @@ class RankingEngine:
         top_n_final: int = 100,
     ) -> list[RankedCandidate]:
         """Full pipeline driven from a candidates.jsonl path."""
-        logger.info("Stage 1: rule pre-screen → top %d", top_n_stage1)
-        stage1 = stage1_prescreening(candidates_path, jd, top_n=top_n_stage1)
-        logger.info("Stage 1 survivors: %d", len(stage1))
+        run_id = str(uuid.uuid4())[:8]
+        jd_hash = hashlib.md5(jd.raw_text.encode("utf-8")).hexdigest()[:8]
+        
+        log.info("ranking_started",
+                 run_id=run_id,
+                 candidates_path=candidates_path,
+                 jd_hash=jd_hash,
+                 stage1_n=top_n_stage1)
+        
+        pipeline_t0 = time.time()
+        
+        # Stage 1
+        t0 = time.time()
+        candidates = list(stream_candidates(candidates_path))
+        candidates_in = len(candidates)
+        honeypots_count = [0]
+        stage1 = stage1_from_records(
+            candidates, jd, top_n=top_n_stage1, run_id=run_id, honeypots_count=honeypots_count
+        )
+        log.info("stage1_complete",
+                 run_id=run_id,
+                 candidates_in=candidates_in,
+                 candidates_out=len(stage1),
+                 honeypots_excluded=honeypots_count[0],
+                 elapsed_s=round(time.time() - t0, 2))
 
+        # Stage 2
+        t0 = time.time()
         jd_embedding = self._jd_embedding(jd)
-        logger.info("Stage 2: semantic rerank → top %d", top_n_stage2)
         stage2 = stage2_semantic_rerank(
             stage1, jd, jd_embedding, self.embedding_service,
             embeddings_matrix=self.embeddings_matrix,
@@ -289,13 +320,40 @@ class RankingEngine:
             top_n=top_n_stage2,
             weights=self.weights,
         )
-        logger.info("Stage 2 survivors: %d", len(stage2))
+        log.info("stage2_complete",
+                 run_id=run_id,
+                 candidates_in=len(stage1),
+                 candidates_out=len(stage2),
+                 elapsed_s=round(time.time() - t0, 2))
 
-        logger.info("Stage 3: behavioral boost → top %d", top_n_final)
-        return stage3_behavioral_boost(
+        # Stage 3
+        t0 = time.time()
+        stage3 = stage3_behavioral_boost(
             stage2, jd, top_n=top_n_final, weights=self.weights,
             rich_reasoning_cache=self.rich_reasoning_cache,
         )
+        log.info("stage3_complete",
+                 run_id=run_id,
+                 candidates_in=len(stage2),
+                 candidates_out=len(stage3),
+                 elapsed_s=round(time.time() - t0, 2))
+                 
+        if stage3:
+            top1 = stage3[0]
+            top1_id = top1.candidate.candidate_id
+            top1_score = round(top1.final_score, 2)
+        else:
+            top1_id = None
+            top1_score = 0.0
+            
+        log.info("ranking_complete",
+                 run_id=run_id,
+                 top1_candidate=top1_id,
+                 top1_score=top1_score,
+                 total_elapsed_s=round(time.time() - pipeline_t0, 2),
+                 output_path="./submission.csv")
+                 
+        return stage3
 
     def rank_records(
         self,
