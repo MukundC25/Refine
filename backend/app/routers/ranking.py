@@ -50,17 +50,17 @@ from app.models.schemas import (
 )
 from app.routers.auth import get_current_user
 
-from backend.app.core.candidate_loader import (
+from app.core.candidate_loader import (
     CandidateRecord,
     load_all_candidates,
     validate_candidate,
 )
-from backend.app.core.jd_parser import (
+from app.core.jd_parser import (
     ParsedJD,
     get_or_parse_jd,
     parse_jd_from_text,
 )
-from backend.app.core.ranking_engine import (
+from app.core.ranking_engine import (
     RankedCandidate,
     RankingEngine,
     STAGE_WEIGHTS,
@@ -68,7 +68,7 @@ from backend.app.core.ranking_engine import (
     stage2_semantic_rerank,
     stage3_behavioral_boost,
 )
-from backend.app.core.rule_scorer import (
+from app.core.rule_scorer import (
     _DEFAULT_PREFERRED_SKILLS,
     _DEFAULT_REQUIRED_SKILLS,
     batch_score,
