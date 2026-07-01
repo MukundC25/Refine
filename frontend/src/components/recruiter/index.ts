@@ -15,3 +15,6 @@ export * from './EducationList';
 export * from './JDInputPanel';
 export * from './WeightsTuner';
 export * from './RunHistoryList';
+export * from './ScoreDimension';
+export * from './ScoreExplainer';
+export * from './MiniScoreBar';

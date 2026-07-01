@@ -1,6 +1,7 @@
 import React from 'react';
 import { RankedCandidate } from '../../lib/types';
 import { ScoreBadge } from './ScoreBadge';
+import { MiniScoreBar } from './MiniScoreBar';
 import { ReasoningCell } from './ReasoningCell';
 
 export const CandidateRow: React.FC<{ candidate: RankedCandidate; onClick: () => void }> = ({ candidate, onClick }) => (
@@ -21,7 +22,10 @@ export const CandidateRow: React.FC<{ candidate: RankedCandidate; onClick: () =>
       {candidate.profile_snapshot.years_of_experience.toFixed(1)}
     </td>
     <td className="px-3 py-3">
-      <ScoreBadge score={candidate.final_score} />
+      <div className="flex flex-col items-start gap-1">
+        <ScoreBadge score={candidate.final_score} />
+        <MiniScoreBar breakdown={candidate.score_breakdown} />
+      </div>
     </td>
     <td className="px-3 py-3">
       <div className="flex flex-wrap gap-1">
