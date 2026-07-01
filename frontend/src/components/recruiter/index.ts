@@ -4,7 +4,6 @@ export * from './ScoreBadge';
 export * from './ReasoningCell';
 export * from './FilterPanel';
 export * from './RecruiterDashboardPage';
-// Issue 018 — Candidate deep-dive drawer + sub-components
 export * from './CandidateProfile';
 export * from './ProfileHeader';
 export * from './ScoreRadarChart';
@@ -13,3 +12,6 @@ export * from './CareerTimeline';
 export * from './SkillsGrid';
 export * from './SignalsPanel';
 export * from './EducationList';
+export * from './JDInputPanel';
+export * from './WeightsTuner';
+export * from './RunHistoryList';
