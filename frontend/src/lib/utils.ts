@@ -176,6 +176,52 @@ export async function fetchCandidateDetail(
   return await response.json();
 }
 
+// Re-rank with adjusted weights (skips Stage 1 — faster than full run)
+export async function rerankPipeline(
+  jobDescription: string | null,
+  weightOverrides: Record<string, number>,
+): Promise<import("./types").RankingResult> {
+  const token = localStorage.getItem('refine_token');
+  if (!token) throw new Error("Authentication required to re-rank");
+
+  const response = await fetch(`${API_BASE}/api/ranking/rerank`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ job_description: jobDescription, weight_overrides: weightOverrides }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || `Rerank failed (${response.status})`);
+  }
+  return response.json();
+}
+
+// Upload a JD file (.docx or .pdf) and run the ranking pipeline
+export async function runRankingPipelineWithFile(
+  jdFile: File,
+  topN: number = 100,
+): Promise<import("./types").RankingResult> {
+  const token = localStorage.getItem('refine_token');
+  if (!token) throw new Error("Authentication required to run ranking");
+
+  const formData = new FormData();
+  formData.append("job_description_file", jdFile);
+  formData.append("top_n", topN.toString());
+
+  const response = await fetch(`${API_BASE}/api/ranking/rank`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to run ranking pipeline");
+  }
+  return response.json();
+}
+
 // Real API call to backend for running the ranking pipeline
 export async function runRankingPipeline(jobDescriptionText: string, topN: number = 100): Promise<import("./types").RankingResult> {
   const token = localStorage.getItem('refine_token');
