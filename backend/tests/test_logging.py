@@ -14,8 +14,7 @@ from app.core.candidate_loader import validate_candidate, CandidateRecord
 from app.core.jd_parser import ParsedJD
 
 _SAMPLE_JSON = (
-    pathlib.Path(__file__).resolve().parents[2]
-    / "[PUB] India_runs_data_and_ai_challenge"
+    pathlib.Path(__file__).resolve().parents[3]
     / "[PUB] India_runs_data_and_ai_challenge"
     / "India_runs_data_and_ai_challenge"
     / "sample_candidates.json"
