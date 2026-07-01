@@ -3,7 +3,7 @@ import { AlertCircle } from 'lucide-react';
 import { useCandidateDetail } from '../../lib/hooks';
 import { ProfileHeader } from './ProfileHeader';
 import { ScoreRadarChart } from './ScoreRadarChart';
-import { ReasoningCard } from './ReasoningCard';
+import { ScoreExplainer } from './ScoreExplainer';
 import { CareerTimeline } from './CareerTimeline';
 import { SkillsGrid } from './SkillsGrid';
 import { SignalsPanel } from './SignalsPanel';
@@ -106,7 +106,12 @@ export const CandidateProfile: React.FC<Props> = ({ candidateId, isOpen, onClose
             />
             <div className="flex-1 space-y-6 overflow-y-auto p-6">
               <ScoreRadarChart breakdown={data.score_breakdown} />
-              <ReasoningCard reasoning={data.reasoning} flags={data.honeypot_flags} />
+              <ScoreExplainer
+                breakdown={data.score_breakdown}
+                reasoning={data.reasoning}
+                finalScore={data.final_score}
+                honeypotFlags={data.honeypot_flags}
+              />
               <CareerTimeline history={data.candidate.career_history} />
               <SkillsGrid
                 skills={data.candidate.skills}
