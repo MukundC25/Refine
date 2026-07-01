@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { RankedCandidateTable } from './RankedCandidateTable';
+import { CandidateProfile } from './CandidateProfile';
 import { RankingResult } from '../../lib/types';
 import Header from '../layout/Header';
 import Footer from '../layout/Footer';
@@ -37,10 +38,10 @@ export const RecruiterDashboardPage: React.FC = () => {
     }
   };
 
-  const handleCandidateClick = (id: string) => {
-    console.log("Clicked candidate:", id);
-    alert(`Candidate Deep-Dive for ${id} (Coming soon)`);
-  };
+  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
+
+  const handleCandidateClick = (id: string) => setSelectedCandidateId(id);
+  const closeDeepDive = () => setSelectedCandidateId(null);
 
   return (
     <div className="flex flex-col min-h-screen bg-neutral-900 text-neutral-silver">
@@ -116,6 +117,12 @@ export const RecruiterDashboardPage: React.FC = () => {
       </main>
 
       <Footer onLogoClick={() => window.location.href = '/'} />
+
+      <CandidateProfile
+        candidateId={selectedCandidateId}
+        isOpen={selectedCandidateId !== null}
+        onClose={closeDeepDive}
+      />
     </div>
   );
 };

@@ -109,8 +109,26 @@ def app_and_client(tmp_path_factory):
         del sys.modules[mod_name]
 
     from fastapi.testclient import TestClient
+    from app import config as app_config
+    from app.limiter import limiter
     from app.main import app
     from app.routers import ranking as ranking_router
+
+    # Overwrite the module-level constants directly. Env-var-only overrides are
+    # fragile because pytest may collect another test module first (e.g.
+    # test_logging.py) that imports app.config *before* our fixture runs, at
+    # which point the module-level constants are already frozen.
+    app_config.CANDIDATES_JSONL_PATH = str(candidates_path)
+    app_config.PARSED_JD_CACHE_PATH = str(tmp / "parsed_jd.json")
+    app_config.EMBEDDINGS_PATH = str(tmp / "no_embeddings.npy")
+    app_config.CANDIDATE_IDS_PATH = str(tmp / "no_ids.json")
+    app_config.RICH_REASONING_PATH = str(tmp / "no_rich.json")
+
+    # The Issue 015 rate-limiter caps /rank at 2/min per IP — sensible in
+    # production, but this suite hammers the endpoint with many validation
+    # cases in quick succession. Disabling the limiter here mirrors the
+    # slowapi-recommended test setup and does NOT change production behaviour.
+    limiter.enabled = False
 
     ranking_router._reset_engine_for_tests()
 
@@ -118,6 +136,7 @@ def app_and_client(tmp_path_factory):
         yield app, client, tmp
 
     ranking_router._reset_engine_for_tests()
+    limiter.enabled = True
 
 
 @pytest.fixture(scope="module")
@@ -152,12 +171,13 @@ def jd_text() -> str:
 @pytest.fixture(scope="module")
 def completed_run(app_and_client, auth_headers, jd_text):
     """Run /rank once and reuse the result across the test class."""
-    _, client, _ = app_and_client
+    _, client, tmp = app_and_client
     resp = client.post(
         "/api/ranking/rank",
         headers=auth_headers,
         data={
             "job_description_text": jd_text,
+            "candidates_path": str(tmp / "candidates.jsonl"),
             "top_n": 10,
             "stage1_n": 50,
             "stage2_n": 20,

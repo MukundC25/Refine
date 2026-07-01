@@ -154,6 +154,28 @@ export function createTextFileUrl(text: string): string {
   return URL.createObjectURL(blob);
 }
 
+// Real API call to backend for fetching a single candidate's deep-dive detail.
+// Returns everything CandidateProfile needs — full CandidateRecord, score
+// breakdown, reasoning, honeypot flags, and rank — from the most recent run.
+export async function fetchCandidateDetail(
+  candidateId: string,
+): Promise<import("./types").CandidateDetailResponse> {
+  const token = localStorage.getItem('refine_token');
+  if (!token) {
+    throw new Error("Authentication required to view candidate detail");
+  }
+
+  const response = await fetch(`${API_BASE}/api/ranking/candidate/${candidateId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Candidate detail fetch failed (${response.status})`);
+  }
+  return await response.json();
+}
+
 // Real API call to backend for running the ranking pipeline
 export async function runRankingPipeline(jobDescriptionText: string, topN: number = 100): Promise<import("./types").RankingResult> {
   const token = localStorage.getItem('refine_token');
