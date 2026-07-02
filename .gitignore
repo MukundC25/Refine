@@ -37,7 +37,13 @@ precomputed/*.bin
 # ── Logs (Issue 017) ──────────────────────────────────────────────────────── #
 logs/
 
-# ── Jupyter ───────────────────────────────────────────────────────────────── #
+# ── IDE / tool config (keep local, not for reviewers) ─────────────────────── #
+.kiro/
+.bolt/
+frontend/.bolt/
+
+# ── Render deploy config ──────────────────────────────────────────────────── #
+render.yaml
 notebooks/.ipynb_checkpoints/
 .ipynb_checkpoints/
 
