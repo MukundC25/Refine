@@ -5,7 +5,7 @@
 > by understanding career signals, skill credibility, and behavioural fit.
 
 **Submission for:** India Runs Data & AI Challenge — Redrob AI Track  
-**Sandbox demo:** [Live on HuggingFace Spaces](https://huggingface.co/spaces/MukundC25/redrob-ranker)
+**Sandbox demo:** [Live on HuggingFace Spaces](https://huggingface.co/spaces/Mukund25/redrob-ranker)
 
 ---
 
