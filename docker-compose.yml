@@ -1,0 +1,40 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - SECRET_KEY=${SECRET_KEY:-changeme-in-production}
+      - DATABASE_URL=${DATABASE_URL:-sqlite:///./sql_app.db}
+      - EMBEDDINGS_PATH=${EMBEDDINGS_PATH:-/app/precomputed/embeddings.npy}
+      - CANDIDATE_IDS_PATH=${CANDIDATE_IDS_PATH:-/app/precomputed/candidate_ids.json}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
+    volumes:
+      - ./precomputed:/app/precomputed:ro
+      - backend_db:/app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  backend_db:

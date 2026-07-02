@@ -1,25 +1,26 @@
-# ── Existing dependencies (resume optimisation) ───────────────────────────── #
-fastapi
-uvicorn[standard]
-pydantic
-python-dotenv
-python-multipart
-google-generativeai
-sqlalchemy
-psycopg2-binary
-passlib[argon2]
-python-jose[cryptography]
-httpx
-argon2-cffi
+# ── Web / auth dependencies ───────────────────────────────────────────────── #
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+pydantic==2.7.1
+python-dotenv==1.0.1
+python-multipart==0.0.9
+google-generativeai==0.7.2
+sqlalchemy==2.0.30
+psycopg2-binary==2.9.9
+passlib[argon2]==1.7.4
+python-jose[cryptography]==3.3.0
+httpx==0.27.0
+argon2-cffi==23.1.0
 
-# ── Ranking system dependencies (Issue 001) ───────────────────────────────── #
+# ── Ranking system dependencies ───────────────────────────────────────────── #
+# torch: CPU-only build — installed via index-url in Dockerfile to avoid ~2 GB CUDA wheel
+torch==2.3.1
 sentence-transformers==3.0.1
-torch==2.3.1               # CPU-only build; install GPU build separately if needed
-ijson==3.3.0               # streaming JSONL parser — avoids loading full dataset in RAM
-python-docx==1.1.2         # .docx resume parsing
-pypdf==4.3.1               # .pdf resume parsing
-slowapi==0.1.9             # rate limiting for FastAPI
-structlog==24.1.0          # structured / audit logging
+ijson==3.3.0
+python-docx==1.1.2
+pypdf==4.3.1
+slowapi==0.1.9
+structlog==24.1.0
 numpy==1.26.4
 scikit-learn==1.5.0
-tqdm>=4.66
+tqdm==4.66.4
