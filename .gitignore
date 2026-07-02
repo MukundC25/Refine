@@ -15,6 +15,7 @@ __pycache__/
 .env
 .env.*
 !.env.production       # keep committed (no secrets, only public URLs)
+!.env.example          # keep committed (documents all variables, no real values)
 
 # ── OS artefacts ──────────────────────────────────────────────────────────── #
 .DS_Store

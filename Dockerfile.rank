@@ -1,0 +1,54 @@
+# Dockerfile.rank — standalone CLI image for rank.py
+#
+# Builds a self-contained environment for running the 3-stage ranking
+# pipeline entirely offline. The sentence-transformer model is baked in
+# so the container works with --network none during the challenge run.
+#
+# Build:
+#   docker build -f Dockerfile.rank -t redrob-ranker .
+#
+# Run ranking:
+#   docker run --rm \
+#     -v $(pwd)/data:/data \
+#     -v $(pwd)/precomputed:/app/precomputed \
+#     redrob-ranker \
+#       --candidates /data/candidates.jsonl \
+#       --jd /data/job_description.docx \
+#       --out /data/submission.csv
+#
+# Pre-compute embeddings:
+#   docker run --rm \
+#     -v $(pwd)/data:/data \
+#     -v $(pwd)/precomputed:/app/precomputed \
+#     --entrypoint python redrob-ranker \
+#       precompute_embeddings.py \
+#         --candidates /data/candidates.jsonl \
+#         --out /app/precomputed/embeddings.npy
+
+FROM python:3.11.9-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY backend/requirements.txt ./requirements.txt
+
+# CPU-only torch — must come before requirements.txt to avoid CUDA pull
+RUN pip install --no-cache-dir torch==2.3.1 \
+    --index-url https://download.pytorch.org/whl/cpu
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY backend/ ./backend/
+COPY rank.py ./rank.py
+COPY precompute_embeddings.py ./precompute_embeddings.py
+
+# Bake the model so the container works fully offline
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
+
+ENV PYTHONPATH=/app:/app/backend
+
+ENTRYPOINT ["python", "rank.py"]
+CMD ["--help"]
