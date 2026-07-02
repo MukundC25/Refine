@@ -1,8 +1,8 @@
-streamlit==1.35.0
-sentence-transformers==3.0.1
-numpy==1.26.4
-scikit-learn==1.5.0
-pandas==2.2.2
+# HF Spaces injects streamlit==1.35.0 which requires numpy<2
+# We don't pin numpy/scikit-learn — let the platform install compatible versions
+sentence-transformers>=2.7.0
+scikit-learn>=1.3.0
+pandas>=2.0.0
 pydantic>=2.0
 python-dotenv>=1.0
 structlog>=24.1
