@@ -5,6 +5,7 @@ pydantic==2.7.1
 python-dotenv==1.0.1
 python-multipart==0.0.9
 google-generativeai==0.7.2
+groq==1.5.0
 sqlalchemy==2.0.30
 psycopg2-binary==2.9.9
 passlib[argon2]==1.7.4

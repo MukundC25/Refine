@@ -1,0 +1,55 @@
+{
+  "raw_text": "Senior AI Engineer — Redrob\n\nWe are looking for a Senior AI Engineer with 5-9 years of experience to join our team building intelligent candidate discovery and ranking systems.\n\nRequired Skills:\n- Embeddings-based retrieval (sentence-transformers, vector databases)\n- Strong Python (3.8+), production-grade code\n- NLP fundamentals (tokenization, text classification, NER)\n- Vector databases (Pinecone, Weaviate, Qdrant, Milvus, or FAISS)\n- Ranking evaluation frameworks (NDCG, MAP, precision)\n- Information retrieval systems\n\nNice to Have:\n- LLM fine-tuning (LoRA, QLoRA, PEFT)\n- Learning-to-rank (LambdaMART, XGBoost ranking)\n- RAG pipeline experience (LangChain, LlamaIndex)\n- HR-tech / recruitment domain experience\n\nRequirements:\n- 5-9 years of experience in ML/AI engineering\n- Product company background preferred\n- Experience deploying ML models to production\n- Strong understanding of evaluation metrics\n\nDisqualifiers:\n- Pure consulting background (TCS/Infosys only with no product company exposure)\n- CV/speech-only ML without text/NLP experience\n- No production deployment experience\n",
+  "role_title": "Senior AI Engineer",
+  "required_skills": [
+    "embeddings",
+    "sentence transformers",
+    "vector database",
+    "python",
+    "retrieval",
+    "nlp",
+    "information retrieval",
+    "ranking",
+    "bert",
+    "transformer",
+    "search",
+    "faiss",
+    "elasticsearch",
+    "recommendation",
+    "pinecone",
+    "weaviate",
+    "qdrant",
+    "milvus"
+  ],
+  "preferred_skills": [
+    "fine-tuning",
+    "lora",
+    "qlora",
+    "learning to rank",
+    "xgboost",
+    "langchain",
+    "rag",
+    "llm",
+    "gpt",
+    "huggingface"
+  ],
+  "disqualifying_signals": [
+    "pure consulting",
+    "no production deployments"
+  ],
+  "min_years_experience": 5.0,
+  "max_years_experience": 9.0,
+  "preferred_locations": [],
+  "notice_period_preference_days": 30,
+  "seniority_level": "senior",
+  "industry_preference": "product_company",
+  "work_mode": "hybrid",
+  "role_embedding_text": "Senior AI Engineer skilled in embeddings-based retrieval, vector databases, Python, NLP, ranking systems, FAISS, Elasticsearch, sentence-transformers, information retrieval, recommendation systems, BERT, transformer models. Product company background preferred. 5-9 years experience.",
+  "jd_hash": "73bee04a5168a07c4b71baac2aca41b6",
+  "vibe_signals": [
+    "product_company",
+    "ai_ml",
+    "senior"
+  ],
+  "hiring_context": "Building intelligent candidate discovery and ranking systems"
+}

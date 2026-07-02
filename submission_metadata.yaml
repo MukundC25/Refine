@@ -12,7 +12,7 @@ team_members:
     role: "AI/ML Engineer"
 
 github_repo: "https://github.com/MukundC25/Refine"
-sandbox_link: "https://huggingface.co/spaces/YOUR_USERNAME/redrob-ranker"  # fill in after HF Spaces deployment
+sandbox_link: "https://huggingface.co/spaces/Mukund25/redrob-ranker"
 
 reproduce_command: >-
   python rank.py
