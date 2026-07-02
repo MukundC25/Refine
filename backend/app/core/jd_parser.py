@@ -197,7 +197,77 @@ def _get_gemini_model():
     return genai.GenerativeModel("gemini-2.5-flash")
 
 
-def _extract_with_gemini(text: str) -> dict:
+def _extract_with_groq(text: str) -> dict:
+    """Use Groq (LLaMA 3.3 70B) to extract structured requirements from JD text.
+
+    Groq is free (30 RPM, 500K tokens/day), extremely fast (~1-2 seconds),
+    and requires no credit card. Set GROQ_API_KEY to enable.
+    See: https://console.groq.com
+    """
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        raise RuntimeError("GROQ_API_KEY not set.")
+    try:
+        from groq import Groq  # type: ignore  # noqa: PLC0415
+    except ImportError as exc:
+        raise ImportError("groq is not installed. Run: pip install groq") from exc
+
+    client = Groq(api_key=api_key)
+    prompt = _EXTRACTION_PROMPT.replace("{jd_text}", text)
+    logger.info("Calling Groq for JD extraction (text length=%d chars)", len(text))
+
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.0,
+        response_format={"type": "json_object"},
+    )
+    raw = response.choices[0].message.content.strip()
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as exc:
+        logger.warning("Groq returned non-JSON; attempting partial parse. Error: %s", exc)
+        m = re.search(r"\{.*\}", raw, re.DOTALL)
+        if m:
+            try:
+                return json.loads(m.group(0))
+            except json.JSONDecodeError:
+                pass
+        logger.error("Could not parse Groq response as JSON. Returning empty dict.")
+        return {}
+
+
+def _extract_requirements(text: str) -> dict:
+    """Extract JD requirements using the best available LLM.
+
+    Priority: Groq (free, fast) → Gemini → empty dict.
+    Caching happens at a higher level (get_or_parse_jd) so this is called
+    at most once per unique JD text.
+    """
+    # 1. Try Groq first — free tier, ~1-2s response time
+    groq_key = os.getenv("GROQ_API_KEY")
+    if groq_key:
+        try:
+            return _extract_with_groq(text)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Groq extraction failed (%s); falling back to Gemini.", exc)
+
+    # 2. Fall back to Gemini
+    gemini_key = os.getenv("GEMINI_API_KEY")
+    if gemini_key and gemini_key not in ("your_new_gemini_api_key_here", "your_gemini_api_key_here"):
+        try:
+            return _extract_with_gemini(text)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Gemini extraction failed (%s); returning empty dict.", exc)
+
+    logger.warning(
+        "No LLM available (set GROQ_API_KEY or GEMINI_API_KEY). "
+        "JD will be parsed with keyword fallback only."
+    )
+    return {}
+
+
+
     """Call Gemini once to extract structured requirements from JD *text*.
 
     Returns a raw dict matching the schema in ``_EXTRACTION_PROMPT``.
@@ -356,7 +426,7 @@ def parse_jd_from_text(text: str) -> ParsedJD:
     if not text or not text.strip():
         raise ValueError("JD text must not be empty.")
 
-    extracted = _extract_with_gemini(text)
+    extracted = _extract_requirements(text)
     return _build_parsed_jd(text, extracted)
 
 
