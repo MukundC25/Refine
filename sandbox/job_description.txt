@@ -1,0 +1,28 @@
+Senior AI Engineer — Redrob
+
+We are looking for a Senior AI Engineer with 5-9 years of experience to join our team building intelligent candidate discovery and ranking systems.
+
+Required Skills:
+- Embeddings-based retrieval (sentence-transformers, vector databases)
+- Strong Python (3.8+), production-grade code
+- NLP fundamentals (tokenization, text classification, NER)
+- Vector databases (Pinecone, Weaviate, Qdrant, Milvus, or FAISS)
+- Ranking evaluation frameworks (NDCG, MAP, precision)
+- Information retrieval systems
+
+Nice to Have:
+- LLM fine-tuning (LoRA, QLoRA, PEFT)
+- Learning-to-rank (LambdaMART, XGBoost ranking)
+- RAG pipeline experience (LangChain, LlamaIndex)
+- HR-tech / recruitment domain experience
+
+Requirements:
+- 5-9 years of experience in ML/AI engineering
+- Product company background preferred
+- Experience deploying ML models to production
+- Strong understanding of evaluation metrics
+
+Disqualifiers:
+- Pure consulting background (TCS/Infosys only with no product company exposure)
+- CV/speech-only ML without text/NLP experience
+- No production deployment experience
