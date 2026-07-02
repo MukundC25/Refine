@@ -1,160 +1,193 @@
-# Refine - AI Resume Optimizer
+# Refine × Redrob — Intelligent Candidate Ranking System
 
-Refine is a full-stack web application that leverages the power of AI to help users evaluate and optimize their resumes based on specific job descriptions. Users can upload their resume (in LaTeX format) and a job description, receive a detailed evaluation with scores and feedback for different sections, and get a refined version of their resume aimed at better alignment with the job requirements.
+> A 3-stage hybrid AI pipeline that ranks 100,000 candidates against a job
+> description the way a great recruiter would — not by keyword matching, but
+> by understanding career signals, skill credibility, and behavioural fit.
 
-## Features
+**Submission for:** India Runs Data & AI Challenge — Redrob AI Track  
+**Sandbox demo:** [Live on HuggingFace Spaces](https://huggingface.co/spaces/YOUR_USERNAME/redrob-ranker)
 
-*   **Resume Evaluation:** Get a score and detailed feedback on how well your resume matches a job description across various categories (Experience, Skills, Projects, Education, etc.).
-*   **AI-Powered Refinement:** Receive an optimized version of your resume (in LaTeX format) with content adjusted to better highlight relevant experience and skills based on the job description and evaluation feedback.
-*   **Step-by-Step Process:** A clear, guided workflow from uploading your documents to viewing the refined resume.
+---
 
-## Application Screenshots
+## Quick Start
 
-Screenshots will be added soon.
+### 1. Install dependencies
+```bash
+pip install -r backend/requirements.txt
+```
 
-### Resume Evaluation 
+### 2. Pre-compute embeddings (one-time, ~3 minutes)
+```bash
+python precompute_embeddings.py \
+  --candidates ./candidates.jsonl \
+  --out ./precomputed/embeddings.npy
+```
 
-The evaluation screen provides detailed insights on how well your resume matches the target job description. Users receive:
+### 3. Run ranking
+```bash
+python rank.py \
+  --candidates ./candidates.jsonl \
+  --jd ./job_description.docx \
+  --out ./submission.csv
+```
 
-- **Overall Match Score**: A comprehensive percentage showing resume-job alignment (39% in this example)
-- **Category Breakdown**: Detailed scores across key areas:
-  - Experience (40%)
-  - Skills/Techstack (30%) 
-  - Projects (30%)
-  - Education (85%)
-  - Profile (40%)
-  - Industry/Domain (30%)
-  - Certifications/Achievements (70%)
+### 4. Validate output
+```bash
+python validate_submission.py ./submission.csv
+```
 
-- **Assessment Summary**: Clear feedback on fit level with specific insights about gaps and requirements
-- **Strengths & Areas for Improvement**: Actionable feedback highlighting what's working well and what needs enhancement
+### 5. Run with Docker (fully reproducible)
+```bash
+# Build the CLI image (model baked in — works offline)
+docker build -f Dockerfile.rank -t redrob-ranker .
 
-### AI-Optimized Resume 
+docker run --rm \
+  -v $(pwd)/data:/data \
+  -v $(pwd)/precomputed:/app/precomputed \
+  redrob-ranker \
+    --candidates /data/candidates.jsonl \
+    --jd /data/job_description.docx \
+    --out /data/submission.csv
+```
 
-After the AI refinement process, users can review their optimized resume with:
+---
 
+## Architecture
 
-- **Improvement Summary**: Detailed explanation of changes made to enhance clarity and impact
-- **Before/After Comparison**: 
-  - Original Score: 39%
-  - Refined Score: 58%
-  - **+19% Improvement** in overall match rating
+```
+candidates.jsonl (100K)
+       │
+  Stage 1: Rule Pre-Screen
+  ├── Honeypot detection (issue 004)
+  └── Rule scorer — YoE, title, skills overlap, company type (issue 006)
+       │  Top ~5,000 candidates
+  Stage 2: Semantic Re-Rank
+  ├── all-MiniLM-L6-v2 embeddings, offline (issue 005)
+  ├── Trust-weighted skills match (issue 007)
+  └── Career trajectory analysis (issue 008)
+       │  Top ~200 candidates
+  Stage 3: Behavioral Signal Boost
+  └── Redrob platform signals (issue 009)
+       │  Top 100 candidates
+  submission.csv → candidate_id, rank, score, reasoning
+```
 
-- **Enhanced Content**: The AI strategically improves descriptions in Skills/Techstack, Projects, and Achievements sections to better emphasize quantifiable achievements and relevant technical depth
-- **Category Performance**: Updated scores showing improvement across different resume sections
+---
 
-### User-Friendly Workflow
-Both screenshots demonstrate the clean, intuitive 4-step process:
-1. **Upload** - Submit your resume and job description
-2. **Preview** - Review uploaded documents
-3. **Evaluation** - Receive detailed scoring and feedback  
-4. **Refinement** - Get your AI-optimized resume
+## Key Design Decisions
 
-The interface uses clear visual indicators (checkmarks, progress bars, and color-coded scores) to guide users through the optimization process seamlessly.
+**Why local embeddings instead of Gemini during ranking?**  
+The challenge spec requires `has_network_during_ranking: false`. Gemini is used
+only once at setup time to parse the JD; the result is cached in
+`precomputed/parsed_jd.json`. All inference uses `all-MiniLM-L6-v2` running
+locally on CPU.
 
-## Technologies Used
+**Why behavioural signals matter**  
+The `redrob_signals` block in the candidate schema is the highest-differentiation
+signal in the dataset. Keyword matchers ignore it entirely. This system uses
+recruiter response rate, interview completion rate, GitHub activity, and offer
+acceptance to separate candidates who convert from those who ghost.
 
-**Backend:**
-*   Python
-*   FastAPI
-*   OpenAI API
+**Why trust-weighted skills over raw keyword overlap**  
+A candidate who self-declares "expert" in 15 AI skills with 0 endorsements and
+0 duration months is a keyword stuffer. The skill trust formula:
+- Platform assessment score overrides self-declared proficiency (60/40 blend)
+- Endorsement count adds log-scale credibility boost
+- Usage duration saturates at 36 months — beyond that, extra duration adds nothing
 
-**Frontend:**
-*   React
-*   TypeScript
-*   Vite
-*   Tailwind CSS
+**Honeypot strategy**  
+Candidates are flagged if they show: YoE inconsistent with career span,
+bulk unendorsed expert skills, non-technical career with many specific AI skill
+claims, or perfect platform engagement scores (all 1.0 is statistically
+implausible). Flagged candidates receive a penalty multiplier (0.7 or 0.4);
+three or more flags → disqualified (multiplier 0.0).
 
-## Prerequisites
+---
 
-Before you begin, ensure you have the following installed:
-*   Python 3.7+
-*   pip (Python package installer)
-*   Node.js (LTS version recommended)
-*   npm or yarn (Node.js package manager)
-*   Git
+## Repo Structure
 
-## Setup and Installation
+```
+Refine/
+├── rank.py                        CLI entrypoint (issue 012)
+├── precompute_embeddings.py       Offline embedding pre-computation
+├── Dockerfile.rank                Standalone CLI Docker image (issue 022)
+├── docker-compose.yml             Web stack orchestration (issue 022)
+├── submission_metadata.yaml       Challenge submission metadata (issue 023)
+├── validate_submission.py         Official challenge validator
+│
+├── backend/
+│   ├── app/
+│   │   ├── core/
+│   │   │   ├── candidate_loader.py     (issue 003)
+│   │   │   ├── honeypot_detector.py    (issue 004)
+│   │   │   ├── embedding_service.py    (issue 005)
+│   │   │   ├── rule_scorer.py          (issue 006)
+│   │   │   ├── skill_matcher.py        (issue 007)
+│   │   │   ├── career_analyzer.py      (issue 008)
+│   │   │   ├── signal_scorer.py        (issue 009)
+│   │   │   ├── ranking_engine.py       (issue 010)
+│   │   │   ├── reasoning_generator.py  (issue 011)
+│   │   │   └── jd_parser.py            (issue 002)
+│   │   ├── routers/
+│   │   │   ├── ranking.py              (issue 013)
+│   │   │   └── auth.py
+│   │   └── main.py
+│   └── tests/                     pytest test suite (all issues)
+│
+├── frontend/                      React + TypeScript recruiter dashboard
+│   └── src/components/recruiter/  (issues 017–020)
+│
+└── sandbox/                       Streamlit demo for HuggingFace Spaces (issue 021)
+    ├── app.py
+    ├── sample_candidates.json
+    └── requirements.txt
+```
 
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/MukundC25/Refine.git
-    cd Refine
-    ```
+---
 
-2.  **Backend Setup:**
-    *   Navigate to the `backend` directory:
-        ```bash
-        cd backend
-        ```
-    *   Install the required Python dependencies:
-        ```bash
-        pip install -r requirements.txt
-        ```
-    *   Create a `.env` file in the `backend` directory.
-    *   Add your OpenAI API key to the `.env` file:
-        ```env
-        OPENAI_API_KEY="your_openai_api_key_here"
-        ```
-        Replace `"your_openai_api_key_here"` with your actual OpenAI API key.
+## Running the Web App
 
-3.  **Frontend Setup:**
-    *   Navigate to the `frontend` directory:
-        ```bash
-        cd ../frontend
-        ```
-    *   Install the required Node.js dependencies:
-        ```bash
-        npm install
-        # or yarn install
-        ```
-    *   (Optional) If your backend is running on a different URL than `http://localhost:8000`, create a `.env` file in the `frontend` directory and add the backend API base URL:
-        ```env
-        VITE_API_BASE_URL="your_backend_api_url"
-        ```
+```bash
+# Start the full stack (backend + frontend)
+docker-compose up
 
-## Running the Application
+# Backend API: http://localhost:8000
+# Frontend dashboard: http://localhost:5173
+```
 
-You need to run both the backend and the frontend concurrently.
+Or without Docker:
+```bash
+# Backend
+cd backend
+PYTHONPATH=..:. uvicorn app.main:app --reload --port 8000
 
-1.  **Run the Backend:**
-    *   Open a new terminal window.
-    *   Navigate to the `backend` directory:
-        ```bash
-        cd backend
-        ```
-    *   Start the FastAPI server:
-        ```bash
-        uvicorn app.main:app --reload
-        ```
-    The backend will run on `http://127.0.0.1:8000` by default.
+# Frontend
+cd frontend
+npm install && npm run dev
+```
 
-2.  **Run the Frontend:**
-    *   Open another terminal window.
-    *   Navigate to the `frontend` directory:
-        ```bash
-        cd frontend
-        ```
-    *   Start the Vite development server:
-        ```bash
-        npm run dev
-        # or yarn dev
-        ```
-    The frontend will typically run on `http://localhost:5173/`. Open this URL in your web browser to access the application.
+---
 
-## How It Works
+## Running Tests
 
-1. **Upload**: Users upload their resume (LaTeX format) and paste the target job description
-2. **Evaluation**: The AI analyzes the resume against the job requirements and provides detailed scoring across multiple categories
-3. **Refinement**: Based on the evaluation feedback, the AI generates an optimized version of the resume with enhanced content and better keyword alignment
-4. **Review**: Users can compare the original and refined versions, along with the improvement metrics
+```bash
+pytest backend/tests/ -v
+```
 
-## API Endpoints
+The test suite covers all 12 backend modules. Tests that require
+`sentence-transformers` or a live `GEMINI_API_KEY` are handled gracefully:
+the embedding service tests skip if the model is not installed; the JD parser
+integration test skips if no API key is set.
 
-- `POST /evaluate` - Evaluates resume against job description
-- `POST /refine` - Generates optimized resume based on evaluation results
-- `GET /health` - Health check endpoint
+---
 
+## Submission Checklist
 
-
-
+- [ ] `precomputed/embeddings.npy` generated from `candidates.jsonl`
+- [ ] `precomputed/parsed_jd.json` generated from `job_description.docx`
+- [ ] `python rank.py ... --out submission.csv` exits 0
+- [ ] `python validate_submission.py submission.csv` prints "Submission is valid."
+- [ ] Scores non-increasing, all ranks 1–100 unique, no duplicate candidate IDs
+- [ ] `submission_metadata.yaml` has no `YOUR_USERNAME` or empty contact fields
+- [ ] Sandbox link is live and accessible without login
+- [ ] Git commit tagged before portal upload
