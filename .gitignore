@@ -29,7 +29,10 @@ submission.csv
 candidates.jsonl
 candidates.jsonl.gz
 *.embeddings.npy
-precomputed/
+# Allow parsed JD cache and rich reasoning (small JSON — no secrets, needed for judges)
+precomputed/*.npy
+precomputed/*.json.gz
+precomputed/*.bin
 
 # ── Logs (Issue 017) ──────────────────────────────────────────────────────── #
 logs/

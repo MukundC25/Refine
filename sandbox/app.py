@@ -1,10 +1,3 @@
-"""Redrob AI — Intelligent Candidate Ranker Demo (Streamlit).
-
-Self-contained sandbox that demonstrates the full 3-stage hybrid ranking
-pipeline on a sample candidate dataset. Intended for HuggingFace Spaces
-deployment so challenge judges can verify the system without cloning the repo.
-"""
-
 import json
 import sys
 import time
@@ -14,10 +7,11 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-# Add the backend package to the path so we can import the ranking modules
-_REPO_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_REPO_ROOT))
-sys.path.insert(0, str(_REPO_ROOT / "backend"))
+# On HuggingFace Spaces, app.py and backend/ sit side-by-side at the Space root.
+# Locally, app.py is in sandbox/ and backend/ is one level up.
+_HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(_HERE))               # Space root OR sandbox/
+sys.path.insert(0, str(_HERE / "backend"))   # bundled backend copy
 
 from app.core.candidate_loader import CandidateRecord, validate_candidate, build_candidate_text
 from app.core.career_analyzer import analyze_career
