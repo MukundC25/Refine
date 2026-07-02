@@ -1,19 +1,29 @@
-# Use an official Python runtime as a parent image
-FROM python:3.9-slim
+FROM python:3.11.9-slim
 
-# Set the working directory in the container
 WORKDIR /app
 
-# Copy the requirements file into the container
+# Build deps for sentence-transformers / psycopg2
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc g++ libpq-dev curl \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt .
 
-# Install any needed packages specified in requirements.txt
+# CPU-only torch first (avoids pulling the ~2 GB CUDA wheel)
+RUN pip install --no-cache-dir torch==2.3.1 \
+    --index-url https://download.pytorch.org/whl/cpu
+
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application code into the container
 COPY . .
 
-# Expose the port the app runs on
+# Bake the sentence-transformer model into the image so the container
+# can run with --network none during the challenge ranking run.
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
+
 EXPOSE 8000
+
+# PYTHONPATH lets uvicorn resolve both `app.*` and `backend.app.*` imports.
+ENV PYTHONPATH=/app:/app/..
 
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
