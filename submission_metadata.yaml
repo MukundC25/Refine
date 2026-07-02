@@ -1,25 +1,92 @@
-challenge: India Runs Data & AI Challenge — Candidate Ranking Track
-version: "1.0.0"
-team: Refine
-submission_file: submission.csv
+team_name: "refine-redrob"
 
-scoring:
-  primary_metric: ndcg_at_100
-  secondary_metric: precision_at_10
+primary_contact:
+  name: "Mukund Chavan"
+  email: ""   # fill in before submission
+  phone: ""   # fill in before submission
 
-pipeline:
-  jd_parser: backend.app.core.jd_parser.JDParser
-  skill_matcher: backend.app.core.skill_matcher.SkillMatcher
-  embedding_service: backend.app.core.embedding_service.EmbeddingService
-  career_analyzer: backend.app.core.career_analyzer.CareerAnalyzer
-  signal_scorer: backend.app.core.signal_scorer.SignalScorer
-  honeypot_detector: backend.app.core.honeypot_detector.HoneypotDetector
-  ranking_engine: backend.app.core.ranking_engine.RankingEngine
+team_members:
+  - name: "Mukund Chavan"
+    role: "Full-Stack AI Engineer"
+  - name: "Sameer"
+    role: "AI/ML Engineer"
 
-model_artifacts:
-  embedding_model: all-MiniLM-L6-v2   # cached offline in .cache/
-  precomputed_dir: precomputed/        # gitignored
+github_repo: "https://github.com/MukundC25/Refine"
+sandbox_link: "https://huggingface.co/spaces/YOUR_USERNAME/redrob-ranker"  # fill in after HF Spaces deployment
 
-notes: |
-  submission.csv is gitignored; generate it by running:
-      python rank.py --jd <jd.txt> --candidates candidates.jsonl
+reproduce_command: >-
+  python rank.py
+  --candidates ./candidates.jsonl
+  --jd ./job_description.docx
+  --out ./submission.csv
+
+compute:
+  platform: "MacBook Pro M2"
+  cpu_cores: 8
+  ram_gb: 16
+  python_version: "3.11.9"
+  os: "macOS 14"
+  uses_gpu_for_inference: false
+  has_network_during_ranking: false
+  pre_computation_required: true
+  pre_computation_command: >-
+    python precompute_embeddings.py
+    --candidates ./candidates.jsonl
+    --out ./precomputed/embeddings.npy
+  pre_computation_time_minutes: 3
+
+ai_tools:
+  used: true
+  tools:
+    - name: "Google Gemini 2.5 Flash"
+      purpose: >-
+        JD parsing only — called once at setup time to extract structured
+        requirements from job_description.docx. Result cached to
+        precomputed/parsed_jd.json. Never called during the ranking run itself.
+    - name: "Kiro IDE (AI pair programmer)"
+      purpose: "Code generation assistance during development"
+    - name: "sentence-transformers/all-MiniLM-L6-v2"
+      purpose: >-
+        Candidate and JD embedding — local model running on CPU, fully offline.
+        Used in Stage 2 for cosine similarity ranking.
+
+approach_summary: >-
+  3-stage hybrid ranking pipeline (no network calls during inference):
+
+  Stage 1 — Rule-Based Pre-Screen: Fast deterministic scoring on YoE, title
+  seniority, skills keyword overlap, and product vs. outsourcing company
+  background across all 100K candidates. Honeypot detection eliminates
+  profiles with fraudulent or inconsistent signals before any ML stage.
+
+  Stage 2 — Semantic Re-Rank: Local sentence-transformer embeddings
+  (all-MiniLM-L6-v2) for cosine similarity between the candidate profile and
+  the JD. Trust-weighted skills matching cross-validates self-declared skills
+  against endorsement counts, usage duration, and Redrob platform assessment
+  scores. Career trajectory analysis rewards domain convergence toward AI/ML
+  and penalises outsourcing-only backgrounds.
+
+  Stage 3 — Behavioral Signal Boost: Redrob platform signals — recruiter
+  response rate, interview completion, GitHub activity score, and offer
+  acceptance rate — score actual hiring-funnel reliability, not just profile
+  quality. Separates behavioral twins: candidates identical on paper but
+  different in platform engagement.
+
+novelty:
+  - >-
+    Behavioral twin separation: two candidates with identical skills and
+    experience land at different ranks because platform signals reveal one
+    responds to recruiters and completes interviews while the other does not.
+  - >-
+    Skills trust scoring: endorsed, assessment-verified, and long-duration
+    skills are weighted higher than freshly self-declared claims. An expert
+    skill with 0 endorsements and 0 duration months scores lower than an
+    advanced skill with 50 endorsements and 24 months usage.
+  - >-
+    Career trajectory analysis: rather than matching titles, the system
+    rewards candidates whose career descriptions show progressive involvement
+    in ML/AI-adjacent work, even if their current title is generic.
+  - >-
+    Full recruiter dashboard UI: most challenge submissions are CLI-only. This
+    submission includes a React + TypeScript dashboard with ranked candidate
+    table, deep-dive profile drawer, score breakdown visualisation, and live
+    weight tuning for re-ranking.
