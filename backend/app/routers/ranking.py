@@ -171,7 +171,12 @@ async def _parse_jd_from_upload(file: UploadFile) -> ParsedJD:
         tmp_path = tmp.name
 
     try:
-        return get_or_parse_jd(tmp_path, cache_path=config.PARSED_JD_CACHE_PATH)
+        try:
+            return get_or_parse_jd(tmp_path, cache_path=config.PARSED_JD_CACHE_PATH)
+        except Exception as exc:
+            logger.warning("Gemini JD parse from file failed (%s); using keyword fallback.", exc)
+            text = Path(tmp_path).read_text(encoding="utf-8", errors="replace")
+            return _jd_from_text_no_gemini(text)
     finally:
         Path(tmp_path).unlink(missing_ok=True)
 
@@ -189,7 +194,13 @@ async def _load_jd(
                 status_code=422,
                 detail=f"Job description too long: {len(text)} chars (max {MAX_JD_LENGTH}).",
             )
-        return get_or_parse_jd(text, cache_path=config.PARSED_JD_CACHE_PATH)
+        try:
+            return get_or_parse_jd(text, cache_path=config.PARSED_JD_CACHE_PATH)
+        except Exception as exc:
+            # Gemini quota exhausted or network unavailable — fall back to the
+            # keyword-based parser so ranking still works without a Gemini key.
+            logger.warning("Gemini JD parse failed (%s); using keyword fallback.", exc)
+            return _jd_from_text_no_gemini(text)
     raise HTTPException(
         status_code=422,
         detail="Either job_description_text or job_description_file is required.",
@@ -346,12 +357,6 @@ async def rank_candidates(
             jd = await _load_jd(job_description_text, job_description_file)
         except HTTPException:
             raise
-        except Exception as exc:
-            logger.warning("Gemini parse failed during /rank: %s", exc)
-            raise HTTPException(
-                status_code=503,
-                detail=f"JD parsing service unavailable: {exc}",
-            )
         candidates = _load_candidates(cand_path)
         state.total_candidates_processed = len(candidates)
 
@@ -483,13 +488,9 @@ async def rerank_candidates(
                 body.job_description, cache_path=config.PARSED_JD_CACHE_PATH,
             )
         except Exception as exc:
-            # Real Gemini failures (rate limit, network, bad key) surface as a
-            # clean 503 so clients can retry rather than seeing a gRPC trace.
-            logger.warning("Gemini parse failed during rerank: %s", exc)
-            raise HTTPException(
-                status_code=503,
-                detail=f"JD parsing service unavailable: {exc}",
-            )
+            # Gemini quota/network — fall back to keyword parser
+            logger.warning("Gemini parse failed during rerank (%s); keyword fallback.", exc)
+            jd = _jd_from_text_no_gemini(body.job_description)
     else:
         jd = prior.jd
 
@@ -601,11 +602,31 @@ def _jd_from_text_no_gemini(text: str) -> ParsedJD:
         yoe_min = float(m.group(1))
         yoe_max = yoe_min + 4
 
+    # Extract required skills by matching known technical skill keywords in the text.
+    # This gives each JD a distinct skill set even without Gemini.
+    all_skills = list(_DEFAULT_REQUIRED_SKILLS) + list(_DEFAULT_PREFERRED_SKILLS)
+    found_required = [s for s in all_skills if s.lower() in text_lower]
+    required = found_required if len(found_required) >= 3 else list(_DEFAULT_REQUIRED_SKILLS)
+
+    # Extract preferred skills as the next tier of keywords
+    found_preferred = [s for s in _DEFAULT_PREFERRED_SKILLS if s.lower() in text_lower]
+
+    # Extract role title — first line that looks like a job title
+    role_title = ""
+    for line in text.splitlines():
+        line = line.strip()
+        if 3 < len(line) < 80 and not line.startswith(("#", "-", "*", "/")):
+            role_title = line
+            break
+
+    import hashlib
+    jd_hash = hashlib.md5(text.encode("utf-8")).hexdigest()
+
     return ParsedJD(
         raw_text=text,
-        role_title="",
-        required_skills=_DEFAULT_REQUIRED_SKILLS,
-        preferred_skills=_DEFAULT_PREFERRED_SKILLS,
+        role_title=role_title,
+        required_skills=required,
+        preferred_skills=found_preferred or list(_DEFAULT_PREFERRED_SKILLS),
         disqualifying_signals=[],
         min_years_experience=yoe_min,
         max_years_experience=yoe_max,
@@ -614,8 +635,8 @@ def _jd_from_text_no_gemini(text: str) -> ParsedJD:
         seniority_level="senior",
         industry_preference="any" if "consulting" in text_lower else "product_company",
         work_mode="hybrid",
-        role_embedding_text=text,
-        jd_hash="",
+        role_embedding_text=text[:2000],  # first 2000 chars as embedding text
+        jd_hash=jd_hash,
         vibe_signals=[],
         hiring_context="",
     )
